@@ -43,16 +43,24 @@ DROP EVENT IF EXISTS evt_desactivar_cuentas_inactivas;
 
 DELIMITER //
 
--- El evento se ejecuta una vez al mes y desactiva clientes cuya última compra fue hace más de dos años.
+-- El evento inicia un mes después de su creación y luego se ejecuta una vez al mes.
+-- Si el cliente nunca ha comprado, se toma su fecha de registro para comprobar si lleva más de dos años inactivo.
 CREATE EVENT evt_desactivar_cuentas_inactivas
-ON SCHEDULE EVERY 1 MONTH STARTS CURRENT_TIMESTAMP
+ON SCHEDULE EVERY 1 MONTH
+STARTS CURRENT_TIMESTAMP + INTERVAL 1 MONTH
 ON COMPLETION PRESERVE ENABLE
 DO
 BEGIN
     UPDATE clientes
     SET activo = FALSE
     WHERE activo = TRUE
-      AND fecha_ultima_compra < DATE_SUB(NOW(), INTERVAL 2 YEAR);
+      AND COALESCE(fecha_ultima_compra, fecha_registro) < DATE_SUB(NOW(), INTERVAL 2 YEAR);
 END//
 
 DELIMITER ;
+
+-- El evento puede deshabilitarse temporalmente si se necesita detener su ejecución.
+-- ALTER EVENT evt_desactivar_cuentas_inactivas DISABLE;
+
+-- El evento puede habilitarse nuevamente cuando se requiera continuar con la ejecución mensual.
+-- ALTER EVENT evt_desactivar_cuentas_inactivas ENABLE;
